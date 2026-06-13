@@ -1,0 +1,86 @@
+# ═══════════════════════════════════════════════════════════════════
+# AI-DTCTM · Docker Compose Stack
+# ═══════════════════════════════════════════════════════════════════
+# One command spins up:
+#   - AI-DTCTM Streamlit app       (port 8501)
+#   - DVWA Digital Twin target     (port 8081, internal)
+#   - WebGoat Digital Twin target  (port 8082, internal)
+#   - Juice Shop Digital Twin      (port 8083, internal)
+#
+# The twin targets are on an ISOLATED network — they can't reach the
+# internet, and the main app reaches them by container name (dvwa, etc.)
+# This is the real racing-car demo stack.
+#
+# Start:    docker compose up -d
+# Logs:     docker compose logs -f aidtctm
+# Stop:     docker compose down
+# Rebuild:  docker compose up -d --build
+# ═══════════════════════════════════════════════════════════════════
+
+services:
+
+  # ── Main application ──────────────────────────────────────────
+  aidtctm:
+    build: .
+    container_name: aidtctm
+    restart: unless-stopped
+    ports:
+      - "8501:8501"
+    env_file:
+      - .env
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models
+      - ./reports:/app/reports
+      - ./virtual_twins:/app/virtual_twins
+      - ./logs:/app/logs
+      # Mount Docker socket so the app can manage twin containers
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - aidtctm_app_net
+      - aidtctm_twin_net
+    depends_on:
+      dvwa:
+        condition: service_started
+      webgoat:
+        condition: service_started
+
+  # ── Digital Twin targets (isolated network) ──────────────────
+  dvwa:
+    image: vulnerables/web-dvwa:latest
+    container_name: aidtctm_dvwa
+    restart: unless-stopped
+    ports:
+      - "8081:80"
+    networks:
+      - aidtctm_twin_net
+
+  webgoat:
+    image: webgoat/goat-and-wolf:latest
+    container_name: aidtctm_webgoat
+    restart: unless-stopped
+    ports:
+      - "8082:8080"
+    networks:
+      - aidtctm_twin_net
+
+  juiceshop:
+    image: bkimminich/juice-shop:latest
+    container_name: aidtctm_juiceshop
+    restart: unless-stopped
+    ports:
+      - "8083:3000"
+    networks:
+      - aidtctm_twin_net
+
+# ═══════════════════════════════════════════════════════════════════
+# Networks:
+#   app_net  = main app network (has internet)
+#   twin_net = twin targets only (INTERNAL, no internet — safety boundary)
+# ═══════════════════════════════════════════════════════════════════
+networks:
+  aidtctm_app_net:
+    driver: bridge
+  aidtctm_twin_net:
+    driver: bridge
+    internal: true   # ← the key safety property: twins can't phone home

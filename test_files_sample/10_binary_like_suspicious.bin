@@ -1,0 +1,25 @@
+This file contains binary-like content with suspicious patterns.
+
+High Entropy Content (simulates compressed/encrypted malware):
+ÿþM¶ÕÛ©Ç¿Õ¹Ðå£Ü|­å}öýõèýÇ¿¯ðÝ©õ¾êüéÌ§å©·èä·­ÿ¾¾£©ê¾Û±ÿ­¨¦ÊÚ¾Ü°¯òÿòèòðþüûóþûüðèû¹«Ø«õÜ©©õÜÜ©ÛñÞýýüùþÓ©û«©¾¾üêíèö²«­ÛêëÝµ¨ðËøºü¹¹±«Û±«±±²±°®°®¯¬­°­­®°­­®°­­®°­­®°­­®°­­®°­­®°­­®°
+
+Embedded strings suggesting malware behavior:
+- cmd.exe /c
+- powershell -WindowStyle Hidden
+- reg add HKEY_LOCAL_MACHINE
+- rundll32.exe
+- c:\windows\system32
+- GetProcAddress
+- LoadLibraryA
+- VirtualAllocEx
+- CreateRemoteThread
+- InternetOpenUrlA
+- InternetReadFile
+
+Suspicious byte sequences that may trigger YARA rules:
+MZ (PE header indicator)
+This Is A Program Cannot Be Run
+Rich
+Copyright notice patterns
+.text section markers
+.reloc section markers

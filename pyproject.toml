@@ -1,0 +1,87 @@
+# ═══════════════════════════════════════════════════════════════════
+# AI-DTCTM · pyproject.toml
+# Modern Python project configuration — ruff, mypy, pytest, coverage
+# ═══════════════════════════════════════════════════════════════════
+
+[project]
+name = "ai-dtctm"
+version = "20.0.0"
+description = "AI-powered Digital Twin Cyber Threat Mitigation"
+authors = [{name = "Dhanush S", email = "dhanush@example.com"}]
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "MIT"}
+
+# ── Ruff: fast linter + formatter (replaces black + flake8 + isort) ──
+[tool.ruff]
+line-length = 110
+target-version = "py311"
+exclude = [".venv", "virtual_twins", "data", "reports", "models"]
+
+[tool.ruff.lint]
+# Enable a sensible set of rules
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # bugbear
+    "UP",  # pyupgrade (modernize syntax)
+    "C4",  # comprehensions
+    "SIM", # simplify
+    "RUF", # ruff-specific
+]
+ignore = [
+    "E501",  # line length handled by formatter
+    "B008",  # function calls in argument defaults (Streamlit uses this a lot)
+]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+
+# ── Mypy: static type checking ──────────────────────────────────────
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false  # gradually tightening as project matures
+ignore_missing_imports = true
+check_untyped_defs = true
+exclude = ["virtual_twins/", "\\.venv"]
+
+
+# ── Pytest: testing config ──────────────────────────────────────────
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_functions = ["test_*"]
+addopts = [
+    "-ra",
+    "--strict-markers",
+    "--tb=short",
+    "--cov=core",
+    "--cov-report=term-missing",
+    "--cov-report=html",
+]
+
+
+# ── Coverage ────────────────────────────────────────────────────────
+[tool.coverage.run]
+branch = true
+source = ["core"]
+omit = [
+    "tests/*",
+    "*/__init__.py",
+    ".venv/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+]

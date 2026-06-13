@@ -1,0 +1,19 @@
+# Streamlit runtime config for AI-DTCTM
+# This lets the Mission Control theme load cleanly without flash-of-default
+
+[theme]
+base                     = "dark"
+primaryColor             = "#FF6B1A"
+backgroundColor          = "#0F0D10"
+secondaryBackgroundColor = "#1A1618"
+textColor                = "#F5E8D8"
+font                     = "sans serif"
+
+[server]
+headless                    = true
+enableCORS                  = false
+enableXsrfProtection        = true
+fileWatcherType             = "auto"
+
+[browser]
+gatherUsageStats = false

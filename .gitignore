@@ -1,0 +1,51 @@
+# AI-DTCTM auto-generated .gitignore
+# Excludes runtime artifacts, secrets, huge bundles, environments.
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual envs
+.venv/
+venv/
+env/
+
+# Build artifacts — too big for git (100 MB push limit), shipped as release assets
+build/
+dist/
+release/
+installer/Output/
+*.spec
+
+# Editor scratch
+*.tmp.*
+*.swp
+*.swo
+
+# Logs and runtime data
+logs/
+*.log
+data/source_clones/
+data/apk_clones/
+data/apk_workbench/
+data/screenshots/
+data/cache.db
+
+# Secrets — NEVER COMMIT THESE
+.env
+*.pfx
+installer/cert/*.pfx
+installer/_temp/
+
+# Quarantined dead code (we already archived it)
+_archive/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db

@@ -1,0 +1,8 @@
+192.168.1.100|Spyware C2|2024-01-15
+10.0.0.50|Botnet Controller|2024-01-20
+172.16.0.10|Ransomware Payment|2024-02-01
+attacker.tk|Spyware C2|2024-01-15
+botnet-master.ml|Botnet|2024-01-20
+ransom-payment.ga|Ransomware|2024-02-01
+phishing-kit.cf|Phishing|2024-02-05
+malware-download.xyz|Distribution|2024-02-10

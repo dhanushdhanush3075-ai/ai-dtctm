@@ -1,0 +1,75 @@
+# API Configuration File
+# Legitimate application configuration - No threats
+
+application:
+  name: AI-DTCTM Forensic Scanner
+  version: 1.0.0
+  environment: production
+  debug: false
+
+api:
+  host: 0.0.0.0
+  port: 8000
+  workers: 4
+  timeout: 30
+
+database:
+  driver: mysql+pymysql
+  host: localhost
+  port: 3306
+  database: forensic_scanner
+  pool_size: 10
+  max_overflow: 20
+
+security:
+  jwt_secret: change_me_in_production
+  jwt_algorithm: HS256
+  token_expiry_hours: 24
+  cors_origins:
+    - http://localhost:3000
+    - http://localhost:8505
+
+threat_intel_apis:
+  virustotal:
+    enabled: true
+    endpoint: https://www.virustotal.com/api/v3
+    timeout: 10
+    rate_limit: 4
+
+  malwarebazaar:
+    enabled: true
+    endpoint: https://api.abuse.ch/api/v1
+    timeout: 10
+    rate_limit: 5
+
+  abuseipdb:
+    enabled: true
+    endpoint: https://api.abuseipdb.com/api/v2
+    timeout: 10
+    rate_limit: 10
+
+  urlhaus:
+    enabled: true
+    endpoint: https://urlhaus-api.abuse.ch/v1
+    timeout: 10
+    rate_limit: 20
+
+logging:
+  level: INFO
+  format: json
+  file: /var/log/forensic-scanner.log
+  max_size_mb: 100
+  backup_count: 5
+
+features:
+  yara_scanning: true
+  entropy_analysis: true
+  ast_analysis: true
+  hash_reputation: true
+  ml_classification: true
+
+performance:
+  cache_ttl_seconds: 3600
+  max_file_size_mb: 50
+  max_concurrent_scans: 10
+  queue_max_size: 1000

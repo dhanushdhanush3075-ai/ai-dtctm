@@ -1,0 +1,38 @@
+{
+  "application": "AI-DTCTM",
+  "version": "1.0.0",
+  "environment": "production",
+  "database": {
+    "host": "localhost",
+    "port": 5432,
+    "name": "forensic_scanner",
+    "timeout": 30
+  },
+  "api": {
+    "endpoints": [
+      "VirusTotal",
+      "MalwareBazaar",
+      "AbuseIPDB",
+      "URLhaus"
+    ],
+    "rate_limit": 100,
+    "timeout_seconds": 10
+  },
+  "security": {
+    "enable_https": true,
+    "certificate_path": "/etc/ssl/certs/server.crt",
+    "key_path": "/etc/ssl/private/server.key"
+  },
+  "features": {
+    "yara_scanning": true,
+    "entropy_analysis": true,
+    "ast_analysis": true,
+    "hash_checking": true
+  },
+  "logging": {
+    "level": "INFO",
+    "file": "/var/log/forensic_scanner.log",
+    "max_size_mb": 100,
+    "backup_count": 5
+  }
+}
