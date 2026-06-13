@@ -191,21 +191,33 @@ if (-not (Test-Path $req)) {
 # Upgrade pip first (quietly)
 & python -m pip install --user --upgrade pip --quiet 2>&1 | Out-Null
 
-# Install requirements — verbose so failures are debuggable
+# Install requirements — write to a log file, then parse it (bypasses
+# PowerShell's "stderr from native commands = terminating error" quirk)
+$pipLog = Join-Path $env:TEMP ("aidtctm-pip-" + (Get-Random) + ".log")
+$ErrorActionPreference = "Continue"
+$prevPSNativeFail = $PSNativeCommandUseErrorActionPreference
+$PSNativeCommandUseErrorActionPreference = $false
+& python -m pip install --user -r $req 2>&1 > $pipLog
+$pipExit = $LASTEXITCODE
+$PSNativeCommandUseErrorActionPreference = $prevPSNativeFail
+$ErrorActionPreference = "Stop"
 $lastErr = $null
-& python -m pip install --user -r $req 2>&1 | ForEach-Object {
-    $line = "$_"
-    if ($line -match "Successfully installed") {
-        Write-Host ("       " + $line) -ForegroundColor Green
-    } elseif ($line -match "^ERROR" -or $line -match "error:") {
-        Write-Host ("       " + $line) -ForegroundColor Red
-        $script:lastErr = $line
-    } elseif ($line -match "^Collecting|^Installing|^Building") {
-        Info $line
+if (Test-Path $pipLog) {
+    Get-Content $pipLog | ForEach-Object {
+        $line = "$_"
+        if ($line -match "Successfully installed") {
+            Write-Host ("       " + $line) -ForegroundColor Green
+        } elseif ($line -match "^ERROR" -or $line -match "^error:") {
+            Write-Host ("       " + $line) -ForegroundColor Red
+            $script:lastErr = $line
+        } elseif ($line -match "^Collecting|^Installing |^Building") {
+            Info $line
+        }
     }
+    Remove-Item $pipLog -Force -ErrorAction SilentlyContinue
 }
 
-if ($LASTEXITCODE -ne 0) {
+if ($pipExit -ne 0) {
     Fail @"
 pip install failed (exit $LASTEXITCODE).
 
