@@ -80,17 +80,29 @@ if (-not $pythonExe) {
     Fail @"
 Python is not installed or not on PATH.
 
-  Please install Python 3.10 or later from:
-      https://www.python.org/downloads/
+  Please install Python 3.11 from:
+      https://www.python.org/downloads/release/python-3119/
 
   During install, TICK the "Add Python to PATH" checkbox.
 
-  Then re-run this installer:
-      irm https://raw.githubusercontent.com/$RepoOwner/$RepoName/main/web_install.ps1 | iex
+  Then re-run this installer.
 "@
 }
 $pyVer = (& python --version 2>&1).Trim()
 OK "Found $pyVer at $pythonExe"
+
+# Warn if Python > 3.12 (3.13/3.14 often missing prebuilt wheels)
+if ($pyVer -match "Python (\d+)\.(\d+)") {
+    $major = [int]$matches[1]
+    $minor = [int]$matches[2]
+    if ($major -eq 3 -and $minor -ge 13) {
+        Info "WARNING: Python $major.$minor is bleeding-edge."
+        Info "  Many packages don't have pre-built wheels yet."
+        Info "  If pip install fails, install Python 3.11 from:"
+        Info "  https://www.python.org/downloads/release/python-3119/"
+        Info ""
+    }
+}
 
 # ── Step 2: Download portable ZIP ────────────────────────────────
 Section 2 6 "Downloading AI-DTCTM portable package..."
@@ -133,10 +145,32 @@ $req = Join-Path $InstallDir "requirements.txt"
 if (-not (Test-Path $req)) {
     Fail "requirements.txt not found in $InstallDir"
 }
-$pipOut = & python -m pip install --quiet --user --upgrade pip 2>&1
-$pipOut = & python -m pip install --quiet --user -r $req 2>&1
+# Show real pip output so failures are debuggable
+& python -m pip install --user --upgrade pip 2>&1 | Out-Null
+& python -m pip install --user -r $req 2>&1 | ForEach-Object {
+    if ($_ -match "error|fail|abort|reject") {
+        Write-Host ("       " + $_) -ForegroundColor Red
+    } elseif ($_ -match "Successfully installed") {
+        Write-Host ("       " + $_) -ForegroundColor Green
+    } elseif ($_ -match "Collecting|Installing") {
+        Info $_
+    }
+}
 if ($LASTEXITCODE -ne 0) {
-    Fail "pip install returned $LASTEXITCODE. Output:`n$pipOut"
+    Fail @"
+pip install failed (exit $LASTEXITCODE).
+
+  The full pip output is above. Common causes + fixes:
+
+  1. Python $pyVer too bleeding-edge - packages don't have wheels yet.
+     FIX: Install Python 3.11 from python.org and retry.
+
+  2. No internet / firewall blocking pypi.org
+     FIX: Check connectivity, retry.
+
+  3. Specific package failing (e.g. pyarrow) - see red error lines above.
+     FIX: Tell DHANUSH which package failed, get a custom requirements.txt.
+"@
 }
 OK "Dependencies installed"
 
