@@ -85,7 +85,17 @@ CREATE TABLE IF NOT EXISTS audit_trail (
     ip_addr    TEXT,
     ts         TEXT DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE TABLE IF NOT EXISTS login_attempts (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    identifier   TEXT NOT NULL,
+    attempted_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
 """
+
+# Brute-force constants
+_MAX_LOGIN_ATTEMPTS = 5       # failures before lockout
+_LOCKOUT_WINDOW_SEC = 900     # 15-minute rolling window
 
 def initialise_db():
     conn = _get_connection()
@@ -97,14 +107,87 @@ def initialise_db():
             cur.execute(stmt)
 
     # v34 migration — add managed_by to existing DBs that pre-date v34.
-    # ALTER TABLE ADD COLUMN is idempotent-safe via try/except.
     try:
         cur.execute("ALTER TABLE users ADD COLUMN managed_by INTEGER REFERENCES users(id)")
     except Exception:
         pass  # column already exists
 
+    # security migration — login_attempts table (idempotent)
+    try:
+        cur.execute(
+            "CREATE TABLE IF NOT EXISTS login_attempts ("
+            "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+            "identifier TEXT NOT NULL, "
+            "attempted_at TEXT DEFAULT CURRENT_TIMESTAMP)"
+        )
+    except Exception:
+        pass
+
     conn.commit()
     conn.close()
+
+
+# ── Brute-force protection ────────────────────────────────────────────────────
+def record_failed_login(identifier: str) -> None:
+    """Persist a failed login attempt for the given username/email."""
+    conn = _get_connection()
+    try:
+        conn.execute(
+            "INSERT INTO login_attempts (identifier) VALUES (?)",
+            (identifier.lower().strip(),),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def is_login_locked(identifier: str) -> tuple[bool, int]:
+    """Return (locked, seconds_remaining) for the given identifier.
+
+    Locked = 5 or more failed attempts in the last 15 minutes.
+    """
+    import time as _time
+    cutoff = datetime.datetime.utcnow() - datetime.timedelta(seconds=_LOCKOUT_WINDOW_SEC)
+    cutoff_str = cutoff.strftime("%Y-%m-%d %H:%M:%S")
+    conn = _get_connection()
+    try:
+        row = conn.execute(
+            "SELECT COUNT(*) AS n, MAX(attempted_at) AS last_at "
+            "FROM login_attempts "
+            "WHERE identifier=? AND attempted_at >= ?",
+            (identifier.lower().strip(), cutoff_str),
+        ).fetchone()
+        count = int(row["n"]) if row else 0
+        if count < _MAX_LOGIN_ATTEMPTS:
+            return False, 0
+        # Compute how long until the oldest qualifying attempt expires
+        oldest = conn.execute(
+            "SELECT MIN(attempted_at) AS oldest FROM login_attempts "
+            "WHERE identifier=? AND attempted_at >= ?",
+            (identifier.lower().strip(), cutoff_str),
+        ).fetchone()
+        if oldest and oldest["oldest"]:
+            oldest_dt = datetime.datetime.strptime(oldest["oldest"], "%Y-%m-%d %H:%M:%S")
+            unlock_at = oldest_dt + datetime.timedelta(seconds=_LOCKOUT_WINDOW_SEC)
+            remaining = max(0, int((unlock_at - datetime.datetime.utcnow()).total_seconds()))
+        else:
+            remaining = _LOCKOUT_WINDOW_SEC
+        return True, remaining
+    finally:
+        conn.close()
+
+
+def clear_failed_logins(identifier: str) -> None:
+    """Clear failed login attempts on successful login."""
+    conn = _get_connection()
+    try:
+        conn.execute(
+            "DELETE FROM login_attempts WHERE identifier=?",
+            (identifier.lower().strip(),),
+        )
+        conn.commit()
+    finally:
+        conn.close()
 
 # ── User Functions ────────────────────────────────────────────────────────────
 def register_user(username: str, email: str, password: str, role: str = "Analyst") -> tuple[bool, str]:
@@ -128,6 +211,15 @@ def register_user(username: str, email: str, password: str, role: str = "Analyst
         return False, "A valid email is required."
     if not password or len(password) < 8:
         return False, "Password must be at least 8 characters."
+    import re as _re
+    if not _re.search(r"[A-Z]", password):
+        return False, "Password must contain at least one uppercase letter."
+    if not _re.search(r"[a-z]", password):
+        return False, "Password must contain at least one lowercase letter."
+    if not _re.search(r"\d", password):
+        return False, "Password must contain at least one digit."
+    if not _re.search(r"[!@#$%^&*()_+\-=\[\]{};':\"\\|,.<>/?`~]", password):
+        return False, "Password must contain at least one special character (!@#$%^&* etc.)."
 
     conn = _get_connection()
     try:
@@ -475,27 +567,40 @@ def get_audit_log(limit: int = 200) -> List[Dict]:
     finally:
         conn.close()
 
-def delete_user(user_id: int) -> bool:
+def delete_user(actor_user_id: int, target_user_id: int) -> tuple[bool, str]:
+    """Delete a user. Requires actor to be SuperAdmin. Audit-logged."""
     conn = _get_connection()
     try:
-        conn.execute("DELETE FROM users WHERE id=?", (user_id,))
+        actor = conn.execute(
+            "SELECT role FROM users WHERE id=?", (actor_user_id,)
+        ).fetchone()
+        if not actor or actor["role"] != "SuperAdmin":
+            return False, "Only SuperAdmin may delete users."
+        if actor_user_id == target_user_id:
+            return False, "Cannot delete your own account."
+        target = conn.execute(
+            "SELECT username, role FROM users WHERE id=?", (target_user_id,)
+        ).fetchone()
+        if not target:
+            return False, "User not found."
+        if target["role"] == "SuperAdmin" and get_super_admin_count() <= 1:
+            return False, "Cannot delete the last SuperAdmin."
+        conn.execute("DELETE FROM users WHERE id=?", (target_user_id,))
+        conn.execute(
+            "INSERT INTO audit_trail (user_id, action, detail, ip_addr) VALUES (?,?,?,?)",
+            (actor_user_id, "delete_user", f"deleted {target['username']} (was {target['role']})", "local"),
+        )
         conn.commit()
-        return True
-    except Exception:
-        return False
+        return True, f"User '{target['username']}' deleted."
+    except Exception as e:
+        return False, str(e)
     finally:
         conn.close()
 
-def update_user_role(user_id: int, new_role: str) -> bool:
-    conn = _get_connection()
-    try:
-        conn.execute("UPDATE users SET role=? WHERE id=?", (new_role, user_id))
-        conn.commit()
-        return True
-    except Exception:
-        return False
-    finally:
-        conn.close()
+
+def update_user_role(actor_user_id: int, target_user_id: int, new_role: str) -> tuple[bool, str]:
+    """Role update shim — delegates to promote_user with full RBAC enforcement."""
+    return promote_user(actor_user_id, target_user_id, new_role)
 
 def get_all_scans(limit: int = 200) -> List[Dict]:
     conn = _get_connection()

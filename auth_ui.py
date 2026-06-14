@@ -20,6 +20,7 @@ from core.db_manager import (
     verify_user, register_user, initialise_db, log_audit,
     _hash_password, _get_connection,
     claim_super_admin, get_super_admin_count, promote_user,
+    record_failed_login, is_login_locked, clear_failed_logins,
 )
 
 # SMTP config for password-reset emails
@@ -212,8 +213,17 @@ def _verify_otp_and_reset(otp_input: str, new_password: str) -> tuple[bool, str]
         return False, f"✕ Incorrect OTP. {remaining} attempt(s) remaining."
 
     # Password strength
+    import re as _re
     if not new_password or len(new_password) < 8:
         return False, "New password must be at least 8 characters."
+    if not _re.search(r"[A-Z]", new_password):
+        return False, "Password must contain at least one uppercase letter."
+    if not _re.search(r"[a-z]", new_password):
+        return False, "Password must contain at least one lowercase letter."
+    if not _re.search(r"\d", new_password):
+        return False, "Password must contain at least one digit."
+    if not _re.search(r"[!@#$%^&*()_+\-=\[\]{};':\"\\|,.<>/?`~]", new_password):
+        return False, "Password must contain at least one special character."
 
     # Update password
     if not _set_user_password(data["user_id"], new_password):
@@ -764,9 +774,18 @@ def render_auth_ui() -> bool:
     """
     initialise_db()
 
-    # Bail early if already logged in
+    # Enforce 1-hour session timeout
+    _SESSION_TIMEOUT = 3600  # seconds
     if st.session_state.get("authenticated"):
-        return True
+        login_at = st.session_state.get("login_at", time.time())
+        if time.time() - login_at > _SESSION_TIMEOUT:
+            user_id = st.session_state.get("user", {}).get("id")
+            if user_id:
+                log_audit(user_id, "logout", "session expired after 1 hour")
+            st.session_state.clear()
+            st.warning("Your session expired after 1 hour. Please log in again.")
+        else:
+            return True
 
     st.markdown(_PAGE_CSS, unsafe_allow_html=True)
 
@@ -794,17 +813,34 @@ def render_auth_ui() -> bool:
             submitted = st.form_submit_button("Authenticate", type="primary")
 
             if submitted:
-                ok, user = verify_user(username, password)
-                if ok:
-                    st.session_state["authenticated"] = True
-                    st.session_state["user"] = user
-                    log_audit(user.get("id"), "login", "success")
-                    with st.spinner("Initialising session..."):
-                        time.sleep(0.5)
-                    st.rerun()
+                _ident = (username or "").strip()
+                locked, secs_left = is_login_locked(_ident)
+                if locked:
+                    mins, secs = divmod(secs_left, 60)
+                    st.error(
+                        f"Account temporarily locked after too many failed attempts. "
+                        f"Try again in {mins:02d}:{secs:02d}."
+                    )
+                    log_audit(None, "login", f"blocked (lockout): {_ident}")
                 else:
-                    st.error("Authentication failed. Check credentials or contact admin.")
-                    log_audit(None, "login", f"failed: {username}")
+                    ok, user = verify_user(username, password)
+                    if ok:
+                        clear_failed_logins(_ident)
+                        st.session_state["authenticated"] = True
+                        st.session_state["user"] = user
+                        st.session_state["login_at"] = time.time()
+                        log_audit(user.get("id"), "login", "success")
+                        with st.spinner("Initialising session..."):
+                            time.sleep(0.5)
+                        st.rerun()
+                    else:
+                        record_failed_login(_ident)
+                        _, secs_left2 = is_login_locked(_ident)
+                        if secs_left2 > 0:
+                            st.error("Too many failed attempts. Account locked for 15 minutes.")
+                        else:
+                            st.error("Authentication failed. Check credentials or contact admin.")
+                        log_audit(None, "login", f"failed: {_ident}")
 
         # ── OTP-based password reset (3-stage flow) ──────────────────
         st.markdown(
